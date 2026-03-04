@@ -10,7 +10,7 @@ const generateToken = (id) => {
 // Registro
 export const register = async (req, res) => {
   try {
-    const { nombre, apellidos, email, password, telefono, direccion } = req.body;
+    const { nombre, apellidos, email, password, telefono, direccion, role } = req.body;
 
     // Verificar si existe
     const exists = await User.findOne({ where: { email } });
@@ -21,6 +21,10 @@ export const register = async (req, res) => {
       });
     }
 
+    // Validar rol permitido
+    const allowedRoles = ['cliente', 'comerciante'];
+    const userRole = allowedRoles.includes(role) ? role : 'cliente';
+
     // Crear usuario
     const user = await User.create({
       nombre,
@@ -29,7 +33,7 @@ export const register = async (req, res) => {
       password,
       telefono,
       direccion,
-      role: 'cliente'
+      role: userRole
     });
 
     const token = generateToken(user.id);
