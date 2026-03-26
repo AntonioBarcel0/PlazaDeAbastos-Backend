@@ -36,6 +36,16 @@ const User = sequelize.define('User', {
   role: {
     type: DataTypes.ENUM('cliente', 'comerciante', 'admin'),
     defaultValue: 'cliente'
+  },
+  imagenPerfil: {
+    type: DataTypes.STRING(500),
+    allowNull: true,
+    comment: 'Imagen de perfil del puesto (para la tarjeta en el marketplace)'
+  },
+  especialidad: {
+    type: DataTypes.STRING(200),
+    allowNull: true,
+    comment: 'Especialidad del puesto, ej: Frutas, Pescadería, mariscos'
   }
 }, {
   timestamps: true,

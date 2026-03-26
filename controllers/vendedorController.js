@@ -23,7 +23,7 @@ export const getVendedores = async (req, res) => {
 
     const vendedores = await User.findAll({
       where,
-      attributes: ['id', 'nombre', 'apellidos', 'telefono', 'direccion'],
+      attributes: ['id', 'nombre', 'apellidos', 'telefono', 'direccion', 'imagenPerfil', 'especialidad'],
       include: [{
         model: Product,
         as: 'productos',
@@ -36,9 +36,17 @@ export const getVendedores = async (req, res) => {
     // Agrupar vendedores por categorías de sus productos
     const vendedoresConCategoria = vendedores.map(vendedor => {
       const productos = vendedor.productos || [];
-      const categorias = [...new Set(productos.map(p => p.categoria).filter(Boolean))];
-      const imagenPrincipal = productos.find(p => p.imagen)?.imagen || null;
-      
+
+      // Categorías: de productos si los hay, si no, de la especialidad del vendedor
+      const categoriasProductos = [...new Set(productos.map(p => p.categoria).filter(Boolean))];
+      const categoriasEspecialidad = vendedor.especialidad
+        ? vendedor.especialidad.split(',').map(s => s.trim()).filter(Boolean)
+        : [];
+      const categorias = categoriasProductos.length > 0 ? categoriasProductos : categoriasEspecialidad;
+
+      // Imagen: perfil del vendedor si existe, si no, la del primer producto con imagen
+      const imagenPrincipal = vendedor.imagenPerfil || productos.find(p => p.imagen)?.imagen || null;
+
       return {
         id: vendedor.id,
         nombre: vendedor.nombre,
@@ -47,6 +55,7 @@ export const getVendedores = async (req, res) => {
         direccion: vendedor.direccion,
         nombreCompleto: `${vendedor.nombre} ${vendedor.apellidos}`,
         categorias,
+        especialidad: vendedor.especialidad || null,
         imagenPrincipal,
         totalProductos: productos.length
       };
