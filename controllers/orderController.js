@@ -309,6 +309,48 @@ export const createOrder = async (req, res) => {
   }
 };
 
+// Obtener los pedidos realizados por el cliente autenticado
+export const getMyPurchases = async (req, res) => {
+  try {
+    const clienteId = req.user.id;
+
+    const orders = await Order.findAll({
+      where: { clienteId },
+      include: [
+        {
+          model: User,
+          as: 'vendedor',
+          attributes: ['id', 'nombre', 'apellidos', 'especialidad', 'telefono']
+        },
+        {
+          model: OrderItem,
+          as: 'items',
+          include: [
+            {
+              model: Product,
+              as: 'producto',
+              attributes: ['id', 'nombre', 'imagen']
+            }
+          ]
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.json({
+      success: true,
+      count: orders.length,
+      orders
+    });
+  } catch (error) {
+    console.error('Error al obtener compras:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener tus pedidos'
+    });
+  }
+};
+
 // Obtener estadísticas de pedidos del vendedor
 export const getOrderStats = async (req, res) => {
   try {

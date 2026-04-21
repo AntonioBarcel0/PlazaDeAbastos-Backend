@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   getMyOrders,
+  getMyPurchases,
   getOrderById,
   updateOrderStatus,
   updateVendorNotes,
@@ -16,6 +17,9 @@ router.use(protect);
 
 // Crear un pedido (clientes)
 router.post('/', createOrder);
+
+// Pedidos del cliente autenticado
+router.get('/my-purchases', getMyPurchases);
 
 // Rutas solo para comerciantes
 router.get('/my-orders', isComerciante, getMyOrders);
