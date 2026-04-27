@@ -1,13 +1,21 @@
 import { DataTypes } from 'sequelize';
 import sequelize from '../config/database.js';
 
-const Order = sequelize.define('Order', {
+const SubOrder = sequelize.define('SubOrder', {
   id: {
     type: DataTypes.UUID,
     defaultValue: DataTypes.UUIDV4,
     primaryKey: true
   },
-  clienteId: {
+  orderId: {
+    type: DataTypes.UUID,
+    allowNull: false,
+    references: {
+      model: 'Orders',
+      key: 'id'
+    }
+  },
+  vendedorId: {
     type: DataTypes.UUID,
     allowNull: false,
     references: {
@@ -19,34 +27,17 @@ const Order = sequelize.define('Order', {
     type: DataTypes.ENUM('pendiente', 'confirmado', 'preparando', 'listo', 'entregado', 'cancelado'),
     defaultValue: 'pendiente'
   },
-  total: {
+  subtotal: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false
   },
-  modoEntrega: {
-    type: DataTypes.ENUM('recogida', 'domicilio'),
-    defaultValue: 'recogida',
-    comment: 'recogida = el cliente recoge en el mercado, domicilio = entrega a domicilio'
-  },
-  direccionEntrega: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  telefonoContacto: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  notasCliente: {
+  notasVendedor: {
     type: DataTypes.TEXT,
-    allowNull: true
-  },
-  fechaEntrega: {
-    type: DataTypes.DATE,
     allowNull: true
   }
 }, {
   timestamps: true,
-  tableName: 'Orders'
+  tableName: 'SubOrders'
 });
 
-export default Order;
+export default SubOrder;

@@ -6,9 +6,12 @@ import {
   updateOrderStatus,
   updateVendorNotes,
   createOrder,
-  getOrderStats
+  getOrderStats,
+  getAllOrders,
+  deliverOrder,
+  getGestorStats
 } from '../controllers/orderController.js';
-import { protect, isComerciante } from '../middleware/auth.js';
+import { protect, isComerciante, isGestor } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -20,6 +23,11 @@ router.post('/', createOrder);
 
 // Pedidos del cliente autenticado
 router.get('/my-purchases', getMyPurchases);
+
+// Rutas del gestor del mercado
+router.get('/all', isGestor, getAllOrders);
+router.get('/gestor-stats', isGestor, getGestorStats);
+router.patch('/:id/deliver', isGestor, deliverOrder);
 
 // Rutas solo para comerciantes
 router.get('/my-orders', isComerciante, getMyOrders);
