@@ -1,6 +1,7 @@
 import User from '../models/User.js';
 import Product from '../models/Product.js';
 import { Op } from 'sequelize';
+import fs from 'fs';
 
 // Obtener todos los comerciantes/vendedores
 export const getVendedores = async (req, res) => {
@@ -85,7 +86,7 @@ export const getVendedor = async (req, res) => {
           [Op.in]: ['comerciante', 'admin']
         }
       },
-      attributes: ['id', 'nombre', 'apellidos', 'telefono', 'direccion'],
+      attributes: ['id', 'nombre', 'apellidos', 'telefono', 'direccion', 'imagenPerfil', 'especialidad'],
       include: [{
         model: Product,
         as: 'productos',
@@ -95,17 +96,21 @@ export const getVendedor = async (req, res) => {
     });
 
     if (!vendedor) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Vendedor no encontrado' 
+      return res.status(404).json({
+        success: false,
+        message: 'Vendedor no encontrado'
       });
     }
+
+    const data = vendedor.toJSON();
+    const imagenPrincipal = data.imagenPerfil || data.productos?.find(p => p.imagen)?.imagen || null;
 
     res.json({
       success: true,
       vendedor: {
-        ...vendedor.toJSON(),
-        nombreCompleto: `${vendedor.nombre} ${vendedor.apellidos}`
+        ...data,
+        nombreCompleto: `${data.nombre} ${data.apellidos}`,
+        imagenPrincipal,
       }
     });
   } catch (error) {
@@ -114,6 +119,48 @@ export const getVendedor = async (req, res) => {
       success: false, 
       message: 'Error al obtener vendedor' 
     });
+  }
+};
+
+// Actualizar perfil del vendedor autenticado (imagen + especialidad)
+export const updateVendorProfile = async (req, res) => {
+  try {
+    const vendedor = await User.findByPk(req.user.id);
+    if (!vendedor) {
+      return res.status(404).json({ success: false, message: 'Vendedor no encontrado' });
+    }
+
+    const { especialidad } = req.body;
+
+    if (especialidad !== undefined) {
+      vendedor.especialidad = especialidad;
+    }
+
+    if (req.file) {
+      // Borrar imagen anterior si existe y no es la misma
+      if (vendedor.imagenPerfil) {
+        const oldPath = `uploads/${vendedor.imagenPerfil.split('/uploads/')[1]}`;
+        fs.unlink(oldPath, () => {});
+      }
+      vendedor.imagenPerfil = `/uploads/${req.file.filename}`;
+    }
+
+    await vendedor.save();
+
+    res.json({
+      success: true,
+      message: 'Perfil actualizado correctamente',
+      vendedor: {
+        id: vendedor.id,
+        nombre: vendedor.nombre,
+        apellidos: vendedor.apellidos,
+        especialidad: vendedor.especialidad,
+        imagenPerfil: vendedor.imagenPerfil,
+      }
+    });
+  } catch (error) {
+    console.error('Error al actualizar perfil:', error);
+    res.status(500).json({ success: false, message: 'Error al actualizar perfil' });
   }
 };
 

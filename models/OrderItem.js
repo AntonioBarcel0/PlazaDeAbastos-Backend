@@ -7,11 +7,11 @@ const OrderItem = sequelize.define('OrderItem', {
     defaultValue: DataTypes.UUIDV4,
     primaryKey: true
   },
-  orderId: {
+  subOrderId: {
     type: DataTypes.UUID,
     allowNull: false,
     references: {
-      model: 'Orders',
+      model: 'SubOrders',
       key: 'id'
     }
   },

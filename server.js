@@ -11,6 +11,7 @@ import orderRoutes from './routes/orders.js';
 import User from './models/User.js';
 import Product from './models/Product.js';
 import Order from './models/Order.js';
+import SubOrder from './models/SubOrder.js';
 import OrderItem from './models/OrderItem.js';
 
 dotenv.config();
@@ -22,14 +23,20 @@ const __dirname = path.dirname(__filename);
 User.hasMany(Product, { foreignKey: 'vendedorId', as: 'productos' });
 Product.belongsTo(User, { foreignKey: 'vendedorId', as: 'vendedor' });
 
-// Relaciones de pedidos
+// Relaciones de pedidos — Order pertenece al cliente
 User.hasMany(Order, { foreignKey: 'clienteId', as: 'pedidosCliente' });
-User.hasMany(Order, { foreignKey: 'vendedorId', as: 'pedidosVendedor' });
 Order.belongsTo(User, { foreignKey: 'clienteId', as: 'cliente' });
-Order.belongsTo(User, { foreignKey: 'vendedorId', as: 'vendedor' });
 
-Order.hasMany(OrderItem, { foreignKey: 'orderId', as: 'items' });
-OrderItem.belongsTo(Order, { foreignKey: 'orderId', as: 'pedido' });
+// SubOrder — cada sub-pedido pertenece a un vendedor y a una Order
+Order.hasMany(SubOrder, { foreignKey: 'orderId', as: 'subOrders' });
+SubOrder.belongsTo(Order, { foreignKey: 'orderId', as: 'order' });
+
+User.hasMany(SubOrder, { foreignKey: 'vendedorId', as: 'subPedidos' });
+SubOrder.belongsTo(User, { foreignKey: 'vendedorId', as: 'vendedor' });
+
+// OrderItem pertenece a SubOrder
+SubOrder.hasMany(OrderItem, { foreignKey: 'subOrderId', as: 'items' });
+OrderItem.belongsTo(SubOrder, { foreignKey: 'subOrderId', as: 'subOrder' });
 OrderItem.belongsTo(Product, { foreignKey: 'productId', as: 'producto' });
 
 const app = express();

@@ -60,9 +60,21 @@ export const isAdmin = (req, res, next) => {
   if (req.user && req.user.role === 'admin') {
     next();
   } else {
-    res.status(403).json({ 
-      success: false, 
-      message: 'Acceso denegado. Solo administradores.' 
+    res.status(403).json({
+      success: false,
+      message: 'Acceso denegado. Solo administradores.'
+    });
+  }
+};
+
+// Verificar si es gestor del mercado
+export const isGestor = (req, res, next) => {
+  if (req.user && req.user.role === 'gestor') {
+    next();
+  } else {
+    res.status(403).json({
+      success: false,
+      message: 'Acceso denegado. Solo el gestor del mercado puede realizar esta acción.'
     });
   }
 };
