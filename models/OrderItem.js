@@ -17,9 +17,17 @@ const OrderItem = sequelize.define('OrderItem', {
   },
   productId: {
     type: DataTypes.UUID,
-    allowNull: false,
+    allowNull: true,
     references: {
       model: 'Products',
+      key: 'id'
+    }
+  },
+  cestaId: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    references: {
+      model: 'CestasPredefinidas',
       key: 'id'
     }
   },
