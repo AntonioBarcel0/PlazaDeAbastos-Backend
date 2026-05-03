@@ -4,6 +4,7 @@ import SubOrder from '../models/SubOrder.js';
 import OrderItem from '../models/OrderItem.js';
 import User from '../models/User.js';
 import Product from '../models/Product.js';
+import CestaPredefinida from '../models/CestaPredefinida.js';
 import sequelize from '../config/database.js';
 
 // ── Helpers ────────────────────────────────────────
@@ -39,24 +40,39 @@ export const createOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: 'La dirección es obligatoria para entrega a domicilio' });
     }
 
-    // 1) Validar productos y agrupar por vendedor
-    const byVendor = {}; // vendedorId → [{ product, cantidad }]
+    // 1) Validar ítems y agrupar por vendedor (soporta productos y cestas)
+    const byVendor = {}; // vendedorId → [{ type, product|cesta, cantidad }]
 
     for (const item of items) {
-      const product = await Product.findByPk(item.productId, { transaction: t });
-
-      if (!product) {
-        await t.rollback();
-        return res.status(404).json({ success: false, message: `Producto ${item.productId} no encontrado` });
+      if (item.cestaId) {
+        // Ítem de tipo cesta predefinida
+        const cesta = await CestaPredefinida.findByPk(item.cestaId, { transaction: t });
+        if (!cesta) {
+          await t.rollback();
+          return res.status(404).json({ success: false, message: `Cesta ${item.cestaId} no encontrada` });
+        }
+        if (!cesta.activa) {
+          await t.rollback();
+          return res.status(400).json({ success: false, message: `La cesta "${cesta.nombre}" no está disponible` });
+        }
+        const vid = cesta.vendedorId;
+        if (!byVendor[vid]) byVendor[vid] = [];
+        byVendor[vid].push({ type: 'cesta', cesta, cantidad: item.cantidad || 1 });
+      } else {
+        // Ítem de tipo producto normal
+        const product = await Product.findByPk(item.productId, { transaction: t });
+        if (!product) {
+          await t.rollback();
+          return res.status(404).json({ success: false, message: `Producto ${item.productId} no encontrado` });
+        }
+        if (!product.disponible) {
+          await t.rollback();
+          return res.status(400).json({ success: false, message: `El producto ${product.nombre} no está disponible` });
+        }
+        const vid = product.vendedorId;
+        if (!byVendor[vid]) byVendor[vid] = [];
+        byVendor[vid].push({ type: 'producto', product, cantidad: item.cantidad });
       }
-      if (!product.disponible) {
-        await t.rollback();
-        return res.status(400).json({ success: false, message: `El producto ${product.nombre} no está disponible` });
-      }
-
-      const vid = product.vendedorId;
-      if (!byVendor[vid]) byVendor[vid] = [];
-      byVendor[vid].push({ product, cantidad: item.cantidad });
     }
 
     // 2) Calcular total global
@@ -67,36 +83,52 @@ export const createOrder = async (req, res) => {
       let subtotalVendor = 0;
       const itemsData = [];
 
-      for (const { product, cantidad } of vendorItems) {
-        const isWeight = product.unidad === 'kg';
-        // Para kg: cantidad llega en gramos → subtotal = (gramos/1000)*precio
-        const subtotal = isWeight
-          ? (cantidad / 1000) * parseFloat(product.precio)
-          : parseFloat(product.precio) * cantidad;
-
-        // Validar stock
-        if (isWeight) {
-          const stockGramos = product.stock != null ? product.stock * 1000 : Infinity;
-          if (cantidad > stockGramos) {
-            await t.rollback();
-            return res.status(400).json({ success: false, message: `Stock insuficiente para ${product.nombre}` });
-          }
+      for (const entry of vendorItems) {
+        if (entry.type === 'cesta') {
+          const { cesta, cantidad } = entry;
+          const subtotal = parseFloat(cesta.precio) * cantidad;
+          subtotalVendor += subtotal;
+          itemsData.push({
+            productId: null,
+            cestaId: cesta.id,
+            cantidad,
+            precioUnitario: cesta.precio,
+            subtotal: Math.round(subtotal * 100) / 100,
+            nombreProducto: cesta.nombre,
+            unidad: 'ud'
+          });
         } else {
-          if (product.stock != null && cantidad > product.stock) {
-            await t.rollback();
-            return res.status(400).json({ success: false, message: `Stock insuficiente para ${product.nombre}` });
-          }
-        }
+          const { product, cantidad } = entry;
+          const isWeight = product.unidad === 'kg';
+          const subtotal = isWeight
+            ? (cantidad / 1000) * parseFloat(product.precio)
+            : parseFloat(product.precio) * cantidad;
 
-        subtotalVendor += subtotal;
-        itemsData.push({
-          productId: product.id,
-          cantidad,
-          precioUnitario: product.precio,
-          subtotal: Math.round(subtotal * 100) / 100,
-          nombreProducto: product.nombre,
-          unidad: product.unidad
-        });
+          // Validar stock
+          if (isWeight) {
+            const stockGramos = product.stock != null ? product.stock * 1000 : Infinity;
+            if (cantidad > stockGramos) {
+              await t.rollback();
+              return res.status(400).json({ success: false, message: `Stock insuficiente para ${product.nombre}` });
+            }
+          } else {
+            if (product.stock != null && cantidad > product.stock) {
+              await t.rollback();
+              return res.status(400).json({ success: false, message: `Stock insuficiente para ${product.nombre}` });
+            }
+          }
+
+          subtotalVendor += subtotal;
+          itemsData.push({
+            productId: product.id,
+            cestaId: null,
+            cantidad,
+            precioUnitario: product.precio,
+            subtotal: Math.round(subtotal * 100) / 100,
+            nombreProducto: product.nombre,
+            unidad: product.unidad
+          });
+        }
       }
 
       subOrdersData.push({
@@ -137,17 +169,18 @@ export const createOrder = async (req, res) => {
           ...itemData
         }, { transaction: t });
 
-        // Actualizar stock
-        const product = await Product.findByPk(itemData.productId, { transaction: t });
-        if (product.stock != null) {
-          const isWeight = product.unidad === 'kg';
-          if (isWeight) {
-            // stock en kg, cantidad en gramos
-            product.stock = Math.max(0, product.stock - (itemData.cantidad / 1000));
-          } else {
-            product.stock = Math.max(0, product.stock - itemData.cantidad);
+        // Actualizar stock solo para productos (no cestas)
+        if (itemData.productId) {
+          const product = await Product.findByPk(itemData.productId, { transaction: t });
+          if (product && product.stock != null) {
+            const isWeight = product.unidad === 'kg';
+            if (isWeight) {
+              product.stock = Math.max(0, product.stock - (itemData.cantidad / 1000));
+            } else {
+              product.stock = Math.max(0, product.stock - itemData.cantidad);
+            }
+            await product.save({ transaction: t });
           }
-          await product.save({ transaction: t });
         }
       }
     }

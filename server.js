@@ -8,11 +8,13 @@ import authRoutes from './routes/auth.js';
 import productRoutes from './routes/products.js';
 import vendedorRoutes from './routes/vendedores.js';
 import orderRoutes from './routes/orders.js';
+import cestaRoutes from './routes/cestas.js';
 import User from './models/User.js';
 import Product from './models/Product.js';
 import Order from './models/Order.js';
 import SubOrder from './models/SubOrder.js';
 import OrderItem from './models/OrderItem.js';
+import CestaPredefinida from './models/CestaPredefinida.js';
 
 dotenv.config();
 
@@ -39,6 +41,11 @@ SubOrder.hasMany(OrderItem, { foreignKey: 'subOrderId', as: 'items' });
 OrderItem.belongsTo(SubOrder, { foreignKey: 'subOrderId', as: 'subOrder' });
 OrderItem.belongsTo(Product, { foreignKey: 'productId', as: 'producto' });
 
+// CestaPredefinida pertenece al vendedor
+User.hasMany(CestaPredefinida, { foreignKey: 'vendedorId', as: 'cestas' });
+CestaPredefinida.belongsTo(User, { foreignKey: 'vendedorId', as: 'vendedor' });
+OrderItem.belongsTo(CestaPredefinida, { foreignKey: 'cestaId', as: 'cesta' });
+
 const app = express();
 
 // Middleware
@@ -51,6 +58,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/vendedores', vendedorRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/cestas', cestaRoutes);
 
 // Ruta de prueba
 app.get('/', (req, res) => {
