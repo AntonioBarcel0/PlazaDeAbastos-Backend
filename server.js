@@ -39,7 +39,7 @@ SubOrder.belongsTo(User, { foreignKey: 'vendedorId', as: 'vendedor' });
 // OrderItem pertenece a SubOrder
 SubOrder.hasMany(OrderItem, { foreignKey: 'subOrderId', as: 'items' });
 OrderItem.belongsTo(SubOrder, { foreignKey: 'subOrderId', as: 'subOrder' });
-OrderItem.belongsTo(Product, { foreignKey: 'productId', as: 'producto' });
+OrderItem.belongsTo(Product, { foreignKey: 'productId', as: 'producto', constraints: false });
 
 // CestaPredefinida pertenece al vendedor
 User.hasMany(CestaPredefinida, { foreignKey: 'vendedorId', as: 'cestas' });
@@ -69,8 +69,16 @@ const PORT = process.env.PORT || 5000;
 
 // Conectar a MySQL y arrancar servidor
 sequelize.authenticate()
-  .then(() => {
+  .then(async () => {
     console.log('✅ MySQL conectado');
+
+    // Eliminar FKs antiguas que bloquean el alter (si existen)
+    const qi = sequelize.getQueryInterface();
+    const tryDrop = async (table, fk) => {
+      try { await qi.removeConstraint(table, fk); } catch (_) {}
+    };
+    await tryDrop('OrderItems', 'orderitems_ibfk_2');
+    await tryDrop('OrderItems', 'OrderItems_productId_foreign_idx');
 
     // Sincronizar modelos
     return sequelize.sync({ alter: true });
