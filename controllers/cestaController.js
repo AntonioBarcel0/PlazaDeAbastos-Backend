@@ -61,6 +61,11 @@ export const createCesta = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Tipo de cesta no válido' });
     }
 
+    const precioNum = parseFloat(precio);
+    if (isNaN(precioNum) || precioNum < 0) {
+      return res.status(400).json({ success: false, message: 'El precio no puede ser negativo' });
+    }
+
     // items llega como string JSON cuando se envía FormData
     let parsedItems = items || [];
     if (typeof parsedItems === 'string') {
@@ -73,7 +78,7 @@ export const createCesta = async (req, res) => {
       vendedorId,
       tipo,
       nombre,
-      precio: parseFloat(precio),
+      precio: precioNum,
       descripcion: descripcion || null,
       items: parsedItems,
       imagen,
@@ -108,7 +113,13 @@ export const updateCesta = async (req, res) => {
       cesta.tipo = tipo;
     }
     if (nombre !== undefined) cesta.nombre = nombre;
-    if (precio !== undefined) cesta.precio = parseFloat(precio);
+    if (precio !== undefined) {
+      const precioNum = parseFloat(precio);
+      if (isNaN(precioNum) || precioNum < 0) {
+        return res.status(400).json({ success: false, message: 'El precio no puede ser negativo' });
+      }
+      cesta.precio = precioNum;
+    }
     if (descripcion !== undefined) cesta.descripcion = descripcion;
     if (items !== undefined) {
       let parsedItems = items;
