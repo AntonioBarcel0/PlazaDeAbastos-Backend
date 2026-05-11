@@ -1,5 +1,6 @@
 import CestaPredefinida from '../models/CestaPredefinida.js';
 import User from '../models/User.js';
+import fs from 'fs';
 
 // ── Obtener cestas (público, filtrado por tipo) ─────
 export const getCestas = async (req, res) => {
@@ -15,7 +16,7 @@ export const getCestas = async (req, res) => {
         {
           model: User,
           as: 'vendedor',
-          attributes: ['id', 'nombre', 'apellidos', 'especialidad', 'imagenPerfil', 'numeroPuesto']
+          attributes: ['id', 'nombre', 'apellidos', 'especialidad', 'imagenPerfil']
         }
       ],
       order: [['precio', 'ASC']]
@@ -60,13 +61,22 @@ export const createCesta = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Tipo de cesta no válido' });
     }
 
+    // items llega como string JSON cuando se envía FormData
+    let parsedItems = items || [];
+    if (typeof parsedItems === 'string') {
+      try { parsedItems = JSON.parse(parsedItems); } catch { parsedItems = []; }
+    }
+
+    const imagen = req.file ? `/uploads/${req.file.filename}` : null;
+
     const cesta = await CestaPredefinida.create({
       vendedorId,
       tipo,
       nombre,
       precio: parseFloat(precio),
       descripcion: descripcion || null,
-      items: items || [],
+      items: parsedItems,
+      imagen,
       activa: true
     });
 
@@ -100,8 +110,21 @@ export const updateCesta = async (req, res) => {
     if (nombre !== undefined) cesta.nombre = nombre;
     if (precio !== undefined) cesta.precio = parseFloat(precio);
     if (descripcion !== undefined) cesta.descripcion = descripcion;
-    if (items !== undefined) cesta.items = items;
+    if (items !== undefined) {
+      let parsedItems = items;
+      if (typeof parsedItems === 'string') {
+        try { parsedItems = JSON.parse(parsedItems); } catch { parsedItems = []; }
+      }
+      cesta.items = parsedItems;
+    }
     if (activa !== undefined) cesta.activa = activa;
+    if (req.file) {
+      if (cesta.imagen) {
+        const oldPath = `uploads/${cesta.imagen.split('/uploads/')[1]}`;
+        fs.unlink(oldPath, () => {});
+      }
+      cesta.imagen = `/uploads/${req.file.filename}`;
+    }
 
     await cesta.save();
 

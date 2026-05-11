@@ -36,6 +36,10 @@ const CestaPredefinida = sequelize.define('CestaPredefinida', {
     allowNull: true,
     defaultValue: []
   },
+  imagen: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
   activa: {
     type: DataTypes.BOOLEAN,
     defaultValue: true

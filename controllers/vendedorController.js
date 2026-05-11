@@ -1,5 +1,6 @@
 import User from '../models/User.js';
 import Product from '../models/Product.js';
+import CestaPredefinida from '../models/CestaPredefinida.js';
 import { Op } from 'sequelize';
 import fs from 'fs';
 
@@ -87,12 +88,20 @@ export const getVendedor = async (req, res) => {
         }
       },
       attributes: ['id', 'nombre', 'apellidos', 'telefono', 'direccion', 'imagenPerfil', 'especialidad'],
-      include: [{
-        model: Product,
-        as: 'productos',
-        where: { disponible: true },
-        required: false
-      }]
+      include: [
+        {
+          model: Product,
+          as: 'productos',
+          where: { disponible: true },
+          required: false
+        },
+        {
+          model: CestaPredefinida,
+          as: 'cestas',
+          where: { activa: true },
+          required: false
+        }
+      ]
     });
 
     if (!vendedor) {
