@@ -72,16 +72,20 @@ sequelize.authenticate()
   .then(async () => {
     console.log('✅ MySQL conectado');
 
-    // Eliminar FKs antiguas que bloquean el alter (si existen)
+    // Limpiar índices duplicados en email que genera sync({ alter:true })
+    // (bug conocido de Sequelize: añade un nuevo unique index en cada restart)
     const qi = sequelize.getQueryInterface();
-    const tryDrop = async (table, fk) => {
-      try { await qi.removeConstraint(table, fk); } catch (_) {}
-    };
-    await tryDrop('OrderItems', 'orderitems_ibfk_2');
-    await tryDrop('OrderItems', 'OrderItems_productId_foreign_idx');
+    try {
+      const indexes = await qi.showIndex('Users');
+      const duplicates = indexes.filter(ix => ix.name !== 'PRIMARY' && ix.name !== 'email');
+      for (const ix of duplicates) {
+        try { await qi.removeIndex('Users', ix.name); } catch (_) {}
+      }
+    } catch (_) {}
 
-    // Sincronizar modelos
-    return sequelize.sync({ alter: true });
+    // Crear tablas que falten sin modificar las existentes
+    // (evita el bug de sync({ alter: true }) que acumula índices unique)
+    return sequelize.sync({ alter: false });
   })
   .then(() => {
     console.log('✅ Tablas creadas/actualizadas');
