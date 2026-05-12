@@ -6,6 +6,7 @@ import {
   updateOrderStatus,
   updateVendorNotes,
   createOrder,
+  cancelOrder,
   getOrderStats,
   getAllOrders,
   deliverOrder,
@@ -23,6 +24,7 @@ router.post('/', createOrder);
 
 // Pedidos del cliente autenticado
 router.get('/my-purchases', getMyPurchases);
+router.patch('/:id/cancel', cancelOrder);
 
 // Rutas del gestor del mercado
 router.get('/all', isGestor, getAllOrders);

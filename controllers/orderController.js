@@ -576,6 +576,70 @@ export const getGestorStats = async (_req, res) => {
   }
 };
 
+// ── Cancelar pedido (cliente propietario, solo si pendiente) ──
+export const cancelOrder = async (req, res) => {
+  const t = await sequelize.transaction();
+  try {
+    const { id } = req.params;
+    const clienteId = req.user.id;
+
+    const order = await Order.findOne({
+      where: { id, clienteId },
+      include: [{
+        model: SubOrder,
+        as: 'subOrders',
+        include: [{
+          model: OrderItem,
+          as: 'items'
+        }]
+      }],
+      transaction: t
+    });
+
+    if (!order) {
+      await t.rollback();
+      return res.status(404).json({ success: false, message: 'Pedido no encontrado' });
+    }
+
+    if (order.estado !== 'pendiente') {
+      await t.rollback();
+      return res.status(409).json({
+        success: false,
+        message: 'Solo puedes cancelar un pedido mientras esté pendiente de confirmación'
+      });
+    }
+
+    // Restaurar stock de los productos del pedido
+    for (const subOrder of order.subOrders) {
+      for (const item of subOrder.items) {
+        if (item.productId) {
+          const product = await Product.findByPk(item.productId, { transaction: t });
+          if (product && product.stock != null) {
+            if (product.unidad === 'kg') {
+              product.stock = product.stock + (item.cantidad / 1000);
+            } else {
+              product.stock = product.stock + item.cantidad;
+            }
+            await product.save({ transaction: t });
+          }
+        }
+      }
+      subOrder.estado = 'cancelado';
+      await subOrder.save({ transaction: t });
+    }
+
+    order.estado = 'cancelado';
+    await order.save({ transaction: t });
+
+    await t.commit();
+    res.json({ success: true, message: 'Pedido cancelado correctamente' });
+  } catch (error) {
+    await t.rollback();
+    console.error('Error al cancelar pedido:', error);
+    res.status(500).json({ success: false, message: 'Error al cancelar el pedido' });
+  }
+};
+
 // ── Estadísticas del vendedor ──────────────────────
 export const getOrderStats = async (req, res) => {
   try {

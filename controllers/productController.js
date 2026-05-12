@@ -95,19 +95,29 @@ export const createProduct = async (req, res) => {
 
     // Validación básica
     if (!nombre || !precio) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Nombre y precio son obligatorios' 
+      return res.status(400).json({
+        success: false,
+        message: 'Nombre y precio son obligatorios'
       });
+    }
+
+    const precioNum = parseFloat(precio);
+    if (isNaN(precioNum) || precioNum < 0) {
+      return res.status(400).json({ success: false, message: 'El precio no puede ser negativo' });
+    }
+
+    const stockNum = stock !== undefined ? parseInt(stock) : 0;
+    if (isNaN(stockNum) || stockNum < 0) {
+      return res.status(400).json({ success: false, message: 'El stock no puede ser negativo' });
     }
 
     const product = await Product.create({
       nombre,
       descripcion,
-      precio,
+      precio: precioNum,
       unidad: unidad || 'kg',
       categoria,
-      stock: stock || 0,
+      stock: stockNum,
       disponible: disponible !== undefined ? disponible : true,
       imagen: req.file ? `/uploads/${req.file.filename}` : null,
       vendedorId: req.user.id
@@ -152,10 +162,22 @@ export const updateProduct = async (req, res) => {
     // Actualizar campos
     if (nombre) product.nombre = nombre;
     if (descripcion !== undefined) product.descripcion = descripcion;
-    if (precio) product.precio = precio;
+    if (precio !== undefined) {
+      const precioNum = parseFloat(precio);
+      if (isNaN(precioNum) || precioNum < 0) {
+        return res.status(400).json({ success: false, message: 'El precio no puede ser negativo' });
+      }
+      product.precio = precioNum;
+    }
     if (unidad) product.unidad = unidad;
     if (categoria !== undefined) product.categoria = categoria;
-    if (stock !== undefined) product.stock = stock;
+    if (stock !== undefined) {
+      const stockNum = parseInt(stock);
+      if (isNaN(stockNum) || stockNum < 0) {
+        return res.status(400).json({ success: false, message: 'El stock no puede ser negativo' });
+      }
+      product.stock = stockNum;
+    }
     if (disponible !== undefined) product.disponible = disponible;
     if (req.file) product.imagen = `/uploads/${req.file.filename}`;
 

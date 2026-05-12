@@ -1,20 +1,20 @@
 import User from '../models/User.js';
 import Product from '../models/Product.js';
+import CestaPredefinida from '../models/CestaPredefinida.js';
 import { Op } from 'sequelize';
 import fs from 'fs';
 
 // Obtener todos los comerciantes/vendedores
 export const getVendedores = async (req, res) => {
   try {
-    const { categoria, search } = req.query;
-    
+    const { search } = req.query;
+
     const where = {
       role: {
         [Op.in]: ['comerciante', 'admin']
       }
     };
 
-    // Filtrar por búsqueda
     if (search) {
       where[Op.or] = [
         { nombre: { [Op.like]: `%${search}%` } },
@@ -24,29 +24,13 @@ export const getVendedores = async (req, res) => {
 
     const vendedores = await User.findAll({
       where,
-      attributes: ['id', 'nombre', 'apellidos', 'telefono', 'direccion', 'imagenPerfil', 'especialidad'],
-      include: [{
-        model: Product,
-        as: 'productos',
-        attributes: ['categoria', 'imagen'],
-        where: categoria ? { categoria } : {},
-        required: false
-      }]
+      attributes: ['id', 'nombre', 'apellidos', 'telefono', 'direccion', 'imagenPerfil', 'especialidad']
     });
 
-    // Agrupar vendedores por categorías de sus productos
-    const vendedoresConCategoria = vendedores.map(vendedor => {
-      const productos = vendedor.productos || [];
-
-      // Categorías: de productos si los hay, si no, de la especialidad del vendedor
-      const categoriasProductos = [...new Set(productos.map(p => p.categoria).filter(Boolean))];
-      const categoriasEspecialidad = vendedor.especialidad
+    const vendedoresData = vendedores.map(vendedor => {
+      const categorias = vendedor.especialidad
         ? vendedor.especialidad.split(',').map(s => s.trim()).filter(Boolean)
         : [];
-      const categorias = categoriasProductos.length > 0 ? categoriasProductos : categoriasEspecialidad;
-
-      // Imagen: perfil del vendedor si existe, si no, la del primer producto con imagen
-      const imagenPrincipal = vendedor.imagenPerfil || productos.find(p => p.imagen)?.imagen || null;
 
       return {
         id: vendedor.id,
@@ -57,21 +41,20 @@ export const getVendedores = async (req, res) => {
         nombreCompleto: `${vendedor.nombre} ${vendedor.apellidos}`,
         categorias,
         especialidad: vendedor.especialidad || null,
-        imagenPrincipal,
-        totalProductos: productos.length
+        imagenPrincipal: vendedor.imagenPerfil || null
       };
     });
 
     res.json({
       success: true,
-      count: vendedoresConCategoria.length,
-      vendedores: vendedoresConCategoria
+      count: vendedoresData.length,
+      vendedores: vendedoresData
     });
   } catch (error) {
     console.error('Error al obtener vendedores:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error al obtener vendedores' 
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener vendedores'
     });
   }
 };
@@ -87,12 +70,20 @@ export const getVendedor = async (req, res) => {
         }
       },
       attributes: ['id', 'nombre', 'apellidos', 'telefono', 'direccion', 'imagenPerfil', 'especialidad'],
-      include: [{
-        model: Product,
-        as: 'productos',
-        where: { disponible: true },
-        required: false
-      }]
+      include: [
+        {
+          model: Product,
+          as: 'productos',
+          where: { disponible: true },
+          required: false
+        },
+        {
+          model: CestaPredefinida,
+          as: 'cestas',
+          where: { activa: true },
+          required: false
+        }
+      ]
     });
 
     if (!vendedor) {
