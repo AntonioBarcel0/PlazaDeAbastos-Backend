@@ -1,6 +1,7 @@
 import { DataTypes } from 'sequelize';
 import sequelize from '../config/database.js';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 const User = sequelize.define('User', {
   id: {
@@ -46,7 +47,23 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING(200),
     allowNull: true,
     comment: 'Especialidad del puesto, ej: Frutas, Pescadería, mariscos'
-  }
+  },
+  emailVerificado: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
+  tokenVerificacion: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  resetToken: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  resetTokenExpira: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
 }, {
   timestamps: true,
   hooks: {
@@ -59,6 +76,19 @@ const User = sequelize.define('User', {
 
 User.prototype.comparePassword = async function(password) {
   return await bcrypt.compare(password, this.password);
+};
+
+User.prototype.generateVerificationToken = function() {
+  const token = crypto.randomBytes(32).toString('hex');
+  this.tokenVerificacion = token;
+  return token;
+};
+
+User.prototype.generateResetToken = function() {
+  const token = crypto.randomBytes(32).toString('hex');
+  this.resetToken = token;
+  this.resetTokenExpira = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
+  return token;
 };
 
 export default User;
