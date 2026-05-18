@@ -83,6 +83,21 @@ sequelize.authenticate()
       }
     } catch (_) {}
 
+    // Añadir columnas nuevas si no existen (email verification + password reset)
+    const cols = await qi.describeTable('Users').catch(() => ({}));
+    if (!cols.emailVerificado) {
+      await qi.addColumn('Users', 'emailVerificado', { type: sequelize.constructor.DataTypes.BOOLEAN, defaultValue: false }).catch(() => {});
+    }
+    if (!cols.tokenVerificacion) {
+      await qi.addColumn('Users', 'tokenVerificacion', { type: sequelize.constructor.DataTypes.STRING(255), allowNull: true }).catch(() => {});
+    }
+    if (!cols.resetToken) {
+      await qi.addColumn('Users', 'resetToken', { type: sequelize.constructor.DataTypes.STRING(255), allowNull: true }).catch(() => {});
+    }
+    if (!cols.resetTokenExpira) {
+      await qi.addColumn('Users', 'resetTokenExpira', { type: sequelize.constructor.DataTypes.DATE, allowNull: true }).catch(() => {});
+    }
+
     // Crear tablas que falten sin modificar las existentes
     // (evita el bug de sync({ alter: true }) que acumula índices unique)
     return sequelize.sync({ alter: false });

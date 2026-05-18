@@ -6,6 +6,7 @@ import User from '../models/User.js';
 import Product from '../models/Product.js';
 import CestaPredefinida from '../models/CestaPredefinida.js';
 import sequelize from '../config/database.js';
+import { sendOrderConfirmationEmail } from '../services/emailService.js';
 
 // ── Helpers ────────────────────────────────────────
 
@@ -213,6 +214,24 @@ export const createOrder = async (req, res) => {
         }
       ]
     });
+
+    // Enviar email de confirmación (no bloquea la respuesta)
+    try {
+      const cliente = fullOrder.cliente;
+      const subOrdersData = fullOrder.subOrders.map(so => ({
+        vendedorNombre: `${so.vendedor.nombre} ${so.vendedor.apellidos}`,
+        items: so.items.map(item => ({
+          nombreProducto: item.nombreProducto,
+          cantidad: item.cantidad,
+          unidad: item.unidad,
+          subtotal: item.subtotal,
+        })),
+      }));
+      sendOrderConfirmationEmail(cliente.email, cliente.nombre, fullOrder, subOrdersData)
+        .catch(err => console.error('Error al enviar email de confirmación:', err));
+    } catch (emailErr) {
+      console.error('Error preparando email de confirmación:', emailErr);
+    }
 
     res.status(201).json({
       success: true,
