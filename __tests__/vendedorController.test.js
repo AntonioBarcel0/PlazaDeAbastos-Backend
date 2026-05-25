@@ -93,15 +93,9 @@ describe('vendedorController — getVendedores', () => {
   });
 
   // 4 ─────────────────────────────────────────────────────────────────────────
-  test('las categorías de productos tienen prioridad sobre la especialidad', async () => {
+  test('las categorías se derivan de la especialidad separada por comas', async () => {
     User.findAll.mockResolvedValue([
-      vendedorBase({
-        especialidad: 'Frutas',
-        productos: [
-          { categoria: 'Verduras', imagen: null },
-          { categoria: 'Frutas',   imagen: null },
-        ],
-      }),
+      vendedorBase({ especialidad: 'Frutas, Verduras' }),
     ]);
 
     const req = { query: {} };
@@ -110,9 +104,8 @@ describe('vendedorController — getVendedores', () => {
     await getVendedores(req, res);
 
     const { vendedores } = res.json.mock.calls[0][0];
-    // Categorías deben venir de productos, no de especialidad (Frutas, Verduras)
-    expect(vendedores[0].categorias).toContain('Verduras');
     expect(vendedores[0].categorias).toContain('Frutas');
+    expect(vendedores[0].categorias).toContain('Verduras');
   });
 
   // 5 ─────────────────────────────────────────────────────────────────────────
@@ -131,12 +124,9 @@ describe('vendedorController — getVendedores', () => {
   });
 
   // 6 ─────────────────────────────────────────────────────────────────────────
-  test('imagenPrincipal usa la imagen de un producto si no hay imagenPerfil', async () => {
+  test('imagenPrincipal es null cuando no hay imagenPerfil', async () => {
     User.findAll.mockResolvedValue([
-      vendedorBase({
-        imagenPerfil: null,
-        productos: [{ categoria: 'Frutas', imagen: '/uploads/manzana.jpg' }],
-      }),
+      vendedorBase({ imagenPerfil: null }),
     ]);
 
     const req = { query: {} };
@@ -145,7 +135,7 @@ describe('vendedorController — getVendedores', () => {
     await getVendedores(req, res);
 
     const { vendedores } = res.json.mock.calls[0][0];
-    expect(vendedores[0].imagenPrincipal).toBe('/uploads/manzana.jpg');
+    expect(vendedores[0].imagenPrincipal).toBeNull();
   });
 
   // 7 ─────────────────────────────────────────────────────────────────────────

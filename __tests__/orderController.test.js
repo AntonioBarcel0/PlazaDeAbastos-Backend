@@ -2,6 +2,12 @@ import { vi, describe, test, expect, afterEach } from 'vitest';
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
+vi.mock('../services/emailService.js', () => ({
+  sendVerificationEmail: vi.fn().mockResolvedValue(undefined),
+  sendPasswordResetEmail: vi.fn().mockResolvedValue(undefined),
+  sendOrderConfirmationEmail: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('../config/database.js', () => ({
   default: { transaction: vi.fn() },
 }));

@@ -3,6 +3,12 @@ import { vi, describe, test, expect, afterEach } from 'vitest';
 // ── Mocks ────────────────────────────────────────────────────────────────────
 // Se deben declarar antes de importar los módulos que los usan
 
+vi.mock('../services/emailService.js', () => ({
+  sendVerificationEmail: vi.fn().mockResolvedValue(undefined),
+  sendPasswordResetEmail: vi.fn().mockResolvedValue(undefined),
+  sendOrderConfirmationEmail: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('../models/User.js', () => ({
   default: {
     findOne: vi.fn(),
@@ -127,6 +133,8 @@ describe('authController — register', () => {
     User.findOne.mockResolvedValue(null);
     User.create.mockResolvedValue({
       id: 'uuid-1', nombre: 'Juan', apellidos: 'Jurado', email: 'juan@test.com', role: 'cliente',
+      generateVerificationToken: vi.fn().mockReturnValue('test-verify-token'),
+      save: vi.fn().mockResolvedValue(undefined),
     });
 
     const req = {
@@ -164,6 +172,8 @@ describe('authController — register', () => {
     User.findOne.mockResolvedValue(null);
     User.create.mockResolvedValue({
       id: 'uuid-1', nombre: 'Malicioso', apellidos: 'Test', email: 'malicioso@test.com', role: 'cliente',
+      generateVerificationToken: vi.fn().mockReturnValue('test-verify-token'),
+      save: vi.fn().mockResolvedValue(undefined),
     });
 
     const req = {
@@ -181,6 +191,8 @@ describe('authController — register', () => {
     User.findOne.mockResolvedValue(null);
     User.create.mockResolvedValue({
       id: 'uuid-2', nombre: 'Vendedor', apellidos: 'Test', email: 'vendedor@test.com', role: 'comerciante',
+      generateVerificationToken: vi.fn().mockReturnValue('test-verify-token'),
+      save: vi.fn().mockResolvedValue(undefined),
     });
 
     const req = {
