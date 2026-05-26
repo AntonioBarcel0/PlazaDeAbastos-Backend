@@ -2,6 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import sequelize from './config/database.js';
 import authRoutes from './routes/auth.js';
@@ -20,6 +21,9 @@ dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Garantizar que la carpeta uploads existe (no está en git)
+fs.mkdirSync(path.join(__dirname, 'uploads'), { recursive: true });
 
 // Establecer relaciones entre modelos
 User.hasMany(Product, { foreignKey: 'vendedorId', as: 'productos' });
